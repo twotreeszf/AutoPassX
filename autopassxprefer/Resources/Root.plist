@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Autofill password in the App Store</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.twotrees.autopassxprefer</string>
+			<key>key</key>
+			<string>Enabled</string>
+			<key>label</key>
+			<string>Enabled</string>
+		</dict>
+		<dict>
+			<key>label</key>
+			<string>Password</string>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSecureEditTextCell</string>
+			<key>placeholder</key>
+			<string>Enter your Apple ID password here</string>
+			<key>defaults</key>
+			<string>com.twotrees.autopassxprefer</string>
+			<key>key</key>
+			<string>Password</string>
+		</dict>
+		<dict>
+			<key>label</key>
+			<string>Options</string>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>This option automates pressing the OK button after the password is automatically inserted. Therefore, make sure you have the right password for your Appld ID account.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.twotrees.autopassxprefer</string>
+			<key>key</key>
+			<string>AutoOK</string>
+			<key>label</key>
+			<string>Auto OK</string>
+		</dict>
+		<dict>
+			<key>label</key>
+			<string>Note</string>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>The iOS 10-11 version remaked by twotrees.zf@gmail.com</string>
+		</dict>
+	</array>
+	<key>title</key>
+	<string>AutoPassX</string>
+</dict>
+</plist>

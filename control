@@ -1,0 +1,9 @@
+Package: com.twotrees.autopassx
+Name: AutoPassX
+Depends: mobilesubstrate
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Autofill password in the App Store
+Maintainer: twotrees
+Author: twotrees.zf@gmail.com
+Section: Tweaks
