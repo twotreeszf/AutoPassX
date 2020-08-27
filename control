@@ -1,5 +1,5 @@
-Package: com.twotrees.autopassx
-Name: AutoPassX
+Package: com.twotrees.autopassxi
+Name: AutoPassXI
 Depends: mobilesubstrate
 Version: 1.0.0
 Architecture: iphoneos-arm

@@ -10,6 +10,122 @@
 
 //--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+void _ttapxDebugMsg(NSString* msg) {
+	NSLog(@"AutoPassX: %@", msg);
+}
+
+BOOL _ttapxEnabled() {
+    NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
+    BOOL enabled = [prefs[@"Enabled"] boolValue];
+    return enabled;
+}
+
+NSString* _ttapxPassword() {
+	NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
+    NSString* password = prefs[@"Password"];
+
+    return password;
+}
+
+BOOL _ttapxAutoOK() {
+	NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
+    BOOL autoOK = [prefs[@"AutoOK"] boolValue];
+    return autoOK;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+typedef void (^ViewFilterBlock)(UIView* view);
+@interface UIView(viewRecursion)
+- (void)aptxFindRecursive:(ViewFilterBlock)block;
+@end
+
+@implementation UIView (viewRecursion)
+- (void)aptxFindRecursive:(ViewFilterBlock)block {
+	block(self);
+
+	for (UIView *subview in self.subviews) {
+		[subview aptxFindRecursive:block];
+	}
+}
+@end
+
+%ctor {
+	_ttapxDebugMsg([NSString stringWithFormat:@"booted pid: %d", [NSProcessInfo processInfo].processIdentifier]);
+}
+
+
+@interface PKPaymentAuthorizationServiceViewController : UIViewController
+@end
+
+@interface PKPaymentAuthorizationServiceViewController()
+- (void)_ttapxAutoFill;
+- (BOOL)_ttapxEnabled;
+- (BOOL)_ttapxAutoOK;
+- (NSString*)_ttapxPassword;
+- (BOOL)_ttapxDebugMsg:(NSString*)msg;
+@end
+
+// iOS 11+
+%hook PKPaymentAuthorizationServiceViewController
+
+- (void)viewDidAppear:(BOOL)animated {
+	%orig;
+
+	_ttapxDebugMsg(@"hooked PKPaymentAuthorizationServiceViewController");
+	if (_ttapxEnabled()) {
+		_ttapxDebugMsg(@"begin auto fill");
+		[self _ttapxAutoFill];
+	}
+}
+
+%new
+- (void)_ttapxAutoFill {
+	[self.view aptxFindRecursive:^(UIView* view) {
+		if ([view isKindOfClass:NSClassFromString(@"PKContinuousButton")]) {
+			UIButton* btn = (UIButton*)view;
+			if ([btn.currentTitle isEqualToString:@"消费"] || [btn.currentTitle isEqualToString:@"购买"]) {							
+				_ttapxDebugMsg(@"finded purchas button");
+				if (_ttapxAutoOK()) {
+					_ttapxDebugMsg(@"click purchas button");
+					[btn sendActionsForControlEvents:UIControlEventTouchUpInside];
+				}
+
+				dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+					[self.view aptxFindRecursive:^(UIView* view) {
+						if ([view isKindOfClass:NSClassFromString(@"_AKInsetTextField")]) {
+							_ttapxDebugMsg(@"finded password field");							
+							UITextField* edit = (UITextField*)view;
+							NSString* password = _ttapxPassword();							
+							if (password.length) {
+								_ttapxDebugMsg(@"fill password field");							
+								edit.text = password;
+							}						
+						}						
+
+						if ([view isKindOfClass:NSClassFromString(@"AKRoundedButton")]) {
+							UIButton* btn = (UIButton*)view;
+							if ([btn.currentTitle isEqualToString:@"登录"]) {
+								_ttapxDebugMsg(@"finded login button");							
+								NSString* password = _ttapxPassword();							
+								if (password.length) {
+									if (_ttapxAutoOK()) {
+										_ttapxDebugMsg(@"click login button");							
+										[btn sendActionsForControlEvents:UIControlEventTouchUpInside];
+									}
+								}
+							}
+						}
+					}];
+    			});
+			}
+		}
+	}];
+}
+
+%end
+
+// iOS 10
 @interface _UIAlertControllerTextField : UITextField
 @end
 
@@ -28,85 +144,58 @@
 @end
 
 @interface SBUserNotificationAlert()
-- (void)_ttapx_autoFillPassword;
-- (BOOL)_ttapx_enabled;
-- (NSString*)_ttapx_password;
-- (BOOL)_ttapx_autoOK;
-- (void)_ttapx_triggerDefaultActionForAlert:(UIAlertController*)alert;
-- (BOOL)_ttapx_showDebugMSG:(NSString*)msg;
+- (void)_ttapxAutoFillPassword;
+- (void)_ttapxDismissAlert:(UIAlertController*)alert;
 @end
-
-//--------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 %hook SBUserNotificationAlert
 
 -(void)willActivate {
 	%orig;
 
-	if (![[self valueForKey:@"_alertSource"] isEqualToString:@"itunesstored"])
+	NSString* source = [self valueForKey:@"_alertSource"];
+	_ttapxDebugMsg([NSString stringWithFormat:@"alert source: %@", source]);
+
+	if (![source isEqualToString:@"itunesstored"])
 		return;
 
-	if (![self _ttapx_enabled])
+	if (!_ttapxEnabled())
 		return;
 
 	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self _ttapx_autoFillPassword];
+        [self _ttapxAutoFillPassword];
     });	
 }
 
 %new
-- (void)_ttapx_autoFillPassword {
+- (void)_ttapxAutoFillPassword {
 	UIAlertController* alert = [self valueForKey:@"alertController"];
 	if (!alert)
 		return;
 
 	_UIAlertControllerTextFieldViewController* textFieldsVC = [alert valueForKey:@"_textFieldViewController"];
-	if (!textFieldsVC)
-		return;
-
-	NSArray* textFields = textFieldsVC.textFields;
-	if (!textFields)
-		return;
-
-	for (UITextField* text in textFields) {
-		if (text.secureTextEntry) {
-			NSString* password = [self _ttapx_password];
-			if (password.length) {
-				text.text = password;
+	if (textFieldsVC) {
+		NSArray* textFields = textFieldsVC.textFields;
+		if (textFields) {
+			for (UITextField* text in textFields) {
+				if (text.secureTextEntry) {
+					NSString* password = _ttapxPassword();
+					if (password.length) {
+						_ttapxDebugMsg(@"fill password");
+						text.text = password;
+					}
+				}
 			}
 		}
 	}
 
-	if ([self _ttapx_autoOK]) {
-		[self _ttapx_triggerDefaultActionForAlert:alert];
-	}
+	if (_ttapxAutoOK())
+		[self _ttapxDismissAlert:alert];
 }
 
 %new
-- (BOOL)_ttapx_enabled {
-    NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
-    BOOL enabled = [prefs[@"Enabled"] boolValue];
-    return enabled;
-}
-
-%new
-- (NSString*)_ttapx_password {
-
-	NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
-    NSString* password = prefs[@"Password"];
-
-    return password;
-}
-
-%new
-- (BOOL)_ttapx_autoOK {
-	NSDictionary *prefs = [NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.twotrees.autopassxprefer.plist"];
-    BOOL autoOK = [prefs[@"AutoOK"] boolValue];
-    return autoOK;
-}
-
-%new 
-- (void)_ttapx_triggerDefaultActionForAlert:(UIAlertController*)alert {
+- (void)_ttapxDismissAlert:(UIAlertController*) alert {
+	_ttapxDebugMsg(@"dismiss alert");
 	UIAlertAction* action = alert.preferredAction;
 	if (!action)
 		return;
@@ -130,12 +219,4 @@
     // Not setting anything for the dismissCompletion block atIndex:5
     [invocation invoke];
 }
-
-%new
-- (BOOL)_ttapx_showDebugMSG:(NSString*)msg {
-	UIAlertView* alert = [[UIAlertView alloc] initWithTitle:@"debug" message:msg delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil, nil];
-    [alert show];
-    
-}
-
 %end
